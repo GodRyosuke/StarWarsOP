@@ -1,0 +1,53 @@
+$(SolutionDir)dependencies\STB_Image
+$(SolutionDir)dependencies\glm\glm
+$(SolutionDir)dependencies\glew\include
+$(SolutionDir)dependencies\fmod\include
+$(SolutionDir)dependencies\freetype\include
+$(SolutionDir)dependencies\nlohmann
+$(SolutionDir)dependencies\SDL2\include
+
+$(SolutionDir)dependencies\SDL2\lib\x64
+$(SolutionDir)dependencies\fmod\lib
+$(SolutionDir)dependencies\freetype\lib
+$(SolutionDir)dependencies\glew\lib
+
+
+fmod_vc.lib
+fmodstudio_vc.lib
+SDL2.lib
+SDL2main.lib
+glew32s.lib
+opengl32.lib
+freetype.lib
+
+XCOPY "$(SolutionDir)dependencies\SDL2\lib\x64\*.dll" "$(OutDir)" /e /y  
+XCOPY "$(SolutionDir)dependencies\fmod\lib\*.dll" "$(OutDir)" /e /y
+XCOPY "$(SolutionDir)dependencies\glew\lib\glew32.dll" "$(OutDir)" /e /y
+XCOPY "$(SolutionDir)dependencies\freetype\lib\freetype.dll" "$(OutDir)" /e /y
+
+set OUTPUT_DIRECTORY="$(OutDir)Shaders"
+if not exist %OUTPUT_DIRECTORY% mkdir %OUTPUT_DIRECTORY%
+XCOPY "$(SolutionDir)StarWarsOP\Shaders" %OUTPUT_DIRECTORY% /e /y
+
+set OUTPUT_DIRECTORY="$(OutDir)resources"
+if not exist %OUTPUT_DIRECTORY% mkdir %OUTPUT_DIRECTORY%
+XCOPY "$(SolutionDir)StarWarsOP\resources" %OUTPUT_DIRECTORY% /e /y
+
+
+
+mkdir "$(OutDir)Shaders"
+XCOPY "$(SolutionDir)StarWarsOP\Shaders" "$(OutDir)Shaders" /e /y
+mkdir "$(OutDir)resources"
+XCOPY "$(SolutionDir)StarWarsOP\resources" "$(OutDir)resources" /e /y
+
+set OUTPUT_DIRECTORY="$(OutDir)Shaders"
+if not exist %OUTPUT_DIRECTORY% mkdir %OUTPUT_DIRECTORY%
+XCOPY "$(SolutionDir)StarWarsOP\Shaders" %OUTPUT_DIRECTORY% /e /y
+
+set OUTPUT_DIRECTORY="$(OutDir)resources"
+if not exist %OUTPUT_DIRECTORY% mkdir %OUTPUT_DIRECTORY%
+XCOPY "$(SolutionDir)StarWarsOP\resources" %OUTPUT_DIRECTORY% /e /y
+
+
+
+copy "$(TargetDir)" %OUTPUT_DIRECTORY%
