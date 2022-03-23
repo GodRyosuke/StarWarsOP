@@ -13,6 +13,9 @@
 #include <map>
 #include "Texture.hpp"
 #include "Mesh.hpp"
+#include "fmod.hpp"
+#include "fmod_studio.hpp"
+#include "FMOD/common.hpp"
 
 #include FT_FREETYPE_H
 
@@ -77,8 +80,13 @@ private:
 	glm::vec3 mTextPos;
 
 	float mTextParam;
+	float mInfH;
+	float mInfL;
 
 	std::map<std::string, Mesh*> mMeshes;
 
+	// ---- Sound Libraries ----
+	FMOD::Studio::System* mAudioSystem;
+	FMOD::Studio::EventInstance* mBackMusic;
 
 };

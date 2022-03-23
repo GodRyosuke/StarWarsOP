@@ -19,6 +19,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\FMOD\common.cpp" />
+    <ClCompile Include="src\FMOD\common_platform.cpp" />
     <ClCompile Include="src\Main.cpp" />
     <ClCompile Include="src\MainLoop.cpp" />
     <ClCompile Include="src\Mesh.cpp" />
@@ -26,6 +28,8 @@
     <ClCompile Include="src\Texture.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\FMOD\common.hpp" />
+    <ClInclude Include="include\FMOD\common_platform.hpp" />
     <ClInclude Include="include\MainLoop.hpp" />
     <ClInclude Include="include\Mesh.hpp" />
     <ClInclude Include="include\Shader.hpp" />
@@ -159,7 +163,7 @@ XCOPY "$(SolutionDir)StarWarsOP\resources" %OUTPUT_DIRECTORY% /e /y
     </PostBuildEvent>
     <PreBuildEvent>
       <Command>
-</Command>
+      </Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -198,7 +202,7 @@ XCOPY "$(SolutionDir)StarWarsOP\resources" %OUTPUT_DIRECTORY% /e /y
     </PostBuildEvent>
     <PreBuildEvent>
       <Command>
-</Command>
+      </Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

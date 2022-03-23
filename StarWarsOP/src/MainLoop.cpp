@@ -6,13 +6,19 @@
 static std::u16string TitleTelop = u"\
 ƒGƒsƒ\[ƒh‚S\n\
 V‚½‚ÈŠó–]\n\
-Žž‚Í“à—‚Ì‚³‚È‚©B‹¥ˆ«‚È‹â‰Í’é‘‚ÌŽx”z‚É”½—ŒR‚Ì”é–§Šî’n‚©‚ç\
-ŠïP‚ðŽdŠ|‚¯’é‘‚É‘Î‚µ‰‚ß‚ÄŸ—˜‚ðŽû‚ß‚½B\n\
-X‚É‚»‚Ìí“¬‚Ì‡ŠÔ‚ÉA”½—ŒR‚ÌƒXƒpƒC‚Í’é‘ŒR‚Ì‹†‹É•ºŠí‚ÌÝŒv}\
-‚ð“‚Ýo‚·‚±‚Æ‚É¬Œ÷B‚»‚ê‚ÍuƒfƒX¥ƒXƒ^[v‚ÆŒÄ‚Î‚ê˜f¯‚ð‚à•²X‚É‚·‚é\
-ƒpƒ[‚ðŽ‚Â‰F’ˆ—vÇŠî’n‚¾‚Á‚½B\n\
-‹¥ˆ«‚È’é‘ŒR‚É’Ç‚í‚ê‚È‚ª‚çƒŒƒCƒA•P‚Í“‚Ýo‚µ‚½ÝŒv}‚ðŽè‚ÉŒÌ‹½‚Ö‚Æ‹}‚¢‚¾B\
-l—Þ‚ð‹~‚¢‹â‰Í‚ÉŽ©—R‚ðŽæ‚è–ß‚·‚½‚ß‚É\
+\n\
+Žž‚Í“à—‚Ì—’‚ª‚«r‚ê‚é‚³‚È‚©B‹¥ˆ«‚È‹â‰Í’é‘‚ÌŽx”z‚É‘Î‚µ\
+”½—ŒR‚Ì‰F’ˆŠÍ‘à‚Í”é–§Šî’n‚©‚ç\
+ŠïPUŒ‚‚ðŽdŠ|‚¯A‰‚ß‚ÄŸ—˜‚ðŽè‚É‚µ‚½B\n\
+\n\
+‚»‚Ìí“¬‚ÌŠÔ‚ÉA”½—ŒR‚ÌƒXƒpƒC‚Í’é‘‚Ì‹†‹É•ºŠí‚ÉŠÖ‚·‚é”é–§‚Ì‚ÌÝŒv}\
+‚ð“‚Ýo‚·‚±‚Æ‚É¬Œ÷‚µ‚½B‚»‚ê‚ÍuƒfƒX¥ƒXƒ^[v‚ÆŒÄ‚Î‚ê˜f¯‚ðŠÛ‚²‚Æ•²Ó‚Å‚«‚é\
+”j‰ó—Í‚ðŒ“‚Ë”õ‚¦‚½‹°‚é‚×‚«•‘•‰F’ˆ—vÇ‚¾‚Á‚½B\n\
+\n\
+Ž×ˆ«‚È“G‘‚ÌŽèæ‚Ç‚à‚É’Ç‚í‚ê‚È‚ª‚ç‚àAƒŒƒCƒA•P‚ÍŽ©‚ç‚Ì‰F’ˆ‘D‚ð‹ì‚Á‚ÄA\
+“‚Ýo‚µ‚½ÝŒv}‚ðŒg‚¦ŒÌ‹½‚Ì¯‚Ö‚Ì“¹‚ð‹}‚¢‚Å‚¢‚½B\
+‚±‚ÌÝŒv}‚±‚»‚ªAl–¯‚ð‹~‚¢AÄ‚Ñ‹â‰ÍŒn‚ÉŽ©—R‚ð\
+Žæ‚è–ß‚·‚½‚ß‚ÌŒ®‚Æ‚È‚é‚Ì‚¾EEE\
 ";
 
 MainLoop::MainLoop()
@@ -21,11 +27,14 @@ MainLoop::MainLoop()
 	mIsRunning(true),
 	mMoveSpeed(0.1),
 	mMoveSensitivity(100.0f),
-	mTextParam(0.0f),
-	mTextDir(glm::vec3(0.0f, 100.0f, 5.0f)),
-	mTextPos(glm::vec3(0.0f, -2.0f, -5.0f))
+	mTextParam(0.25f),
+	mInfH(20.0f),
+	mInfL(100.0f)
 {
+	mTextDir = glm::vec3(0.0f, mInfL, mInfH);
+	mTextPos = glm::vec3(0.0f, 0.0f, -mInfH);
 	mTextDir = glm::normalize(mTextDir);
+	mTextDir /= 7.0f;
 }
 
 
@@ -92,6 +101,21 @@ bool MainLoop::Initialize()
 	//FT_Select_Charmapim_faceAFT_ENCODING_UNICODEj;
 	FT_Set_Pixel_Sizes(mFontFace, 0, 48);
 	slot = mFontFace->glyph;
+
+
+	void* extraDriverData = NULL;
+	Common_Init(&extraDriverData);
+
+	mAudioSystem = NULL;
+	ERRCHECK(FMOD::Studio::System::create(&mAudioSystem));
+
+	// The example Studio project is authored for 5.1 sound, so set up the system output mode to match
+	FMOD::System* coreSystem = NULL;
+	ERRCHECK(mAudioSystem->getCoreSystem(&coreSystem));
+	ERRCHECK(coreSystem->setSoftwareFormat(0, FMOD_SPEAKERMODE_5POINT1, 0));
+
+	ERRCHECK(mAudioSystem->initialize(1024, FMOD_STUDIO_INIT_NORMAL, FMOD_INIT_NORMAL, extraDriverData));
+
 
 	if (!LoadShaders())
 	{
@@ -422,7 +446,19 @@ bool MainLoop::LoadData()
 		mMeshes.insert(std::make_pair("StarWarsTitle", mesh));
 	}
 
+	// Load Audio Bank
+	FMOD::Studio::Bank* masterBank = NULL;
+	ERRCHECK(mAudioSystem->loadBankFile(Common_MediaPath(".\\resources\\Master.bank"), FMOD_STUDIO_LOAD_BANK_NORMAL, &masterBank));
 
+	FMOD::Studio::Bank* stringsBank = NULL;
+	ERRCHECK(mAudioSystem->loadBankFile(Common_MediaPath(".\\resources\\Master.strings.bank"), FMOD_STUDIO_LOAD_BANK_NORMAL, &stringsBank));
+
+	FMOD::Studio::EventDescription* BackMusicDesc = NULL;
+	ERRCHECK(mAudioSystem->getEvent("event:/Main/StarWarsOP", &BackMusicDesc));
+	mBackMusic = NULL;
+	ERRCHECK(BackMusicDesc->createInstance(&mBackMusic));
+
+	ERRCHECK(mBackMusic->start());	// Music Start!!
 
 	return true;
 }
@@ -542,11 +578,13 @@ void MainLoop::UpdateGame()
 	//		SDL_WarpMouseInWindow(mWindow, mWindowWidth / 2, mWindowHeight / 2);
 	//	}
 	//}
+
+	ERRCHECK(mAudioSystem->update());
 }
 
 void MainLoop::Draw()
 {
-	glClearColor(0, 0.5, 0.7, 1.0f);
+	glClearColor(0, 0, 0.1, 1.0f);
 	// Clear the color buffer
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -567,6 +605,7 @@ void MainLoop::Draw()
 		//mMeshes["SimpleObj"]->SetMeshRotate(rot);
 	}
 	{
+
 		glm::mat4 rot = glm::rotate(glm::mat4(1.0f), (float)M_PI, glm::vec3(1.0f, 0.0f, 0.0f));
 		mMeshes["StarWarsTitle"]->SetMeshRotate(rot);
 	}
@@ -596,8 +635,11 @@ void MainLoop::Draw()
 	{
 		m3DTextShader->UseProgram();
 		m3DTextShader->SetMatrixUniform("uView", CameraView);
-		glm::mat4 rotate = glm::rotate(glm::mat4(1.0f), (float)M_PI / 6.0f, glm::vec3(1.0f, 0.0f, 0.0f));
-		Draw3DUTFText(TitleTelop.c_str(), mTextPos, glm::vec3(1.0f, 1.0f, 1.0f), 15.0f,0.03f, rotate);
+		float textRad = atan(mInfH / mInfL);
+		glm::mat4 rotate = glm::rotate(glm::mat4(1.0f), textRad, glm::vec3(1.0f, 0.0f, 0.0f));
+		Draw3DUTFText(TitleTelop.c_str(), mTextPos, glm::vec3(1.0f, 1.0f, 1.0f), 47.0f, 0.05f, rotate);
+		glm::mat4 testRotate = glm::rotate(glm::mat4(1.0f), (float)M_PI / 2.0f, glm::vec3(1.0f, 0.0f, 0.0f));
+		//Draw3DUTFText(TitleTelop.c_str(), glm::vec3(0.0f, 50.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), 47.0f, 0.05f, testRotate);
 	}
 
 
@@ -616,6 +658,7 @@ void MainLoop::RunLoop()
 		UpdateGame();
 		Draw();
 	}
+	ERRCHECK(mBackMusic->stop(FMOD_STUDIO_STOP_IMMEDIATE));
 }
 
 void MainLoop::Shutdown()
