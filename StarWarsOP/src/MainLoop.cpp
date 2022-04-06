@@ -21,6 +21,41 @@ static std::u16string TitleTelop = u"\
 取り戻すための鍵となるのだ・・・\
 ";
 
+float skyboxVertices[] =
+{
+	//   Coordinates
+	-1.0f, -1.0f,  1.0f,//        7--------6
+	 1.0f, -1.0f,  1.0f,//       /|       /|
+	 1.0f, -1.0f, -1.0f,//      4--------5 |
+	-1.0f, -1.0f, -1.0f,//      | |      | |
+	-1.0f,  1.0f,  1.0f,//      | 3------|-2
+	 1.0f,  1.0f,  1.0f,//      |/       |/
+	 1.0f,  1.0f, -1.0f,//      0--------1
+	-1.0f,  1.0f, -1.0f
+};
+
+unsigned int skyboxIndices[] =
+{
+	// Right
+	1, 2, 6,
+	6, 5, 1,
+	// Left
+	0, 4, 7,
+	7, 3, 0,
+	// Top
+	4, 5, 6,
+	6, 7, 4,
+	// Bottom
+	0, 3, 2,
+	2, 1, 0,
+	// Back
+	0, 1, 5,
+	5, 4, 0,
+	// Front
+	3, 7, 6,
+	6, 2, 3
+};
+
 MainLoop::MainLoop()
 	:mWindowWidth(1024),
 	mWindowHeight(768),
@@ -40,7 +75,6 @@ MainLoop::MainLoop()
 
 bool MainLoop::Initialize()
 {
-
 	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0)
 	{
 		SDL_Log("Unable to initialize SDL: %s", SDL_GetError());
@@ -88,21 +122,8 @@ bool MainLoop::Initialize()
 
 	setlocale(LC_CTYPE, "");
 
-	// FREE TYPE
-	FT_Library library;
-	//FT_Face face;
-	FT_GlyphSlot slot;
-	// Load Font
-	FT_Init_FreeType(&library);
-	//FT_New_Face(library, ".\\resources\\Carlito-Regular.ttf", 0, &mFontFace);
-	FT_New_Face(library, ".\\resources\\arialuni.ttf", 0, &mFontFace);
-	FT_Select_Charmap(mFontFace, ft_encoding_unicode);
-	//FT_Select_Charmap(mFontFace, ft_encoding_sjis);
-	//FT_Select_Charmap（m_face、FT_ENCODING_UNICODE）;
-	FT_Set_Pixel_Sizes(mFontFace, 0, 48);
-	slot = mFontFace->glyph;
 
-
+	// Audio System
 	void* extraDriverData = NULL;
 	Common_Init(&extraDriverData);
 
@@ -142,6 +163,26 @@ bool MainLoop::Initialize()
 bool MainLoop::LoadShaders()
 {
 	// Compile Shader Program
+	// Load TextShader
+	{
+		std::string vert_file = "./Shaders/Text.vert";
+		std::string frag_file = "./Shaders/Text.frag";
+		mTextShader = new Shader();
+		if (!mTextShader->CreateShaderProgram(vert_file, frag_file)) {
+			return false;
+		}
+	}
+
+	mTextShader->UseProgram();
+	{
+		glm::mat4 spriteViewProj = glm::mat4(1.0f);
+		spriteViewProj[0][0] = 2.0f / (float)mWindowWidth;
+		spriteViewProj[1][1] = 2.0f / (float)mWindowHeight;
+		spriteViewProj[3][2] = 1.0f;
+		mTextShader->SetMatrixUniform("uViewProj", spriteViewProj);
+	}
+
+	// Load 3DTextShader
 	{
 		std::string vert_file = "./Shaders/3DText.vert";
 		std::string frag_file = "./Shaders/3DText.frag";
@@ -151,8 +192,10 @@ bool MainLoop::LoadShaders()
 		}
 	}
 
+	mText = new Text(".\\resources\\arialuni.ttf", mTextShader, m3DTextShader);
+
 	// 初期値を代入
-	mCameraUP = glm::vec3(0.0f, 0.0f, 1.0f);
+ 	mCameraUP = glm::vec3(0.0f, 0.0f, 1.0f);
 	mCameraOrientation = glm::vec3(0, 0.5f, 0);
 	glm::mat4 View = glm::lookAt(
 		mCameraPos,
@@ -166,22 +209,6 @@ bool MainLoop::LoadShaders()
 	m3DTextShader->SetMatrixUniform("uTranslate", glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 35.0f, 0.0f)));
 	m3DTextShader->SetMatrixUniform("uRotate", glm::mat4(1.0f));
 
-	// Load 3D Text VAO
-	m3DTextShader->UseProgram();
-	glGenVertexArrays(1, &m3DTextVertexArray);
-	glBindVertexArray(m3DTextVertexArray);
-
-	glGenBuffers(1, &m3DTextVertexBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, m3DTextVertexBuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
-
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-	glEnableVertexAttribArray(1);
-
-	glBindVertexArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 
 	// Load Mesh Shader
@@ -201,215 +228,72 @@ bool MainLoop::LoadShaders()
 	mMeshShader->SetVectorUniform("uCameraPos", mCameraPos);
 
 
+	// Load SkyBoxShader
+	{
+		std::string vert_file = "./Shaders/SkyBox.vert";
+		std::string frag_file = "./Shaders/SkyBox.frag";
+		mSkyBoxShader = new Shader();
+		if (!mSkyBoxShader->CreateShaderProgram(vert_file, frag_file)) {
+			return false;
+		}
+	}
+	mSkyBoxShader->UseProgram();
+	mSkyBoxShader->SetMatrixUniform("uVew", View);
+	mSkyBoxShader->SetMatrixUniform("uProj", Projection);
+	{
+		glm::mat4 rot = glm::rotate(glm::mat4(1.0f), (float)M_PI / 2.0f, glm::vec3(1.0f, 0.0f, 0.0f));
+		mSkyBoxShader->SetMatrixUniform("uRot", rot);
+	}
+	// Load SkyBox VAO
+	glGenVertexArrays(1, &mSkyBoxVertexArray);
+	glBindVertexArray(mSkyBoxVertexArray);
+
+	glGenBuffers(1, &mSkyBoxVertexBuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, mSkyBoxVertexBuffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), skyboxVertices, GL_STATIC_DRAW);
+
+	glGenBuffers(1, &mSkyBoxIndexBuffer);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mSkyBoxIndexBuffer);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(skyboxIndices), skyboxIndices, GL_STATIC_DRAW);
+
+	glBindBuffer(GL_ARRAY_BUFFER, mSkyBoxVertexBuffer);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+
+	// unbind cube vertex arrays
+	glBindVertexArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+	// Sky BoxのTextureを読み込む
+	{
+		//std::vector<std::string> facesCubemap =
+		//{
+		//	"./resources/skybox/right.jpg",
+		//	"./resources/skybox/left.jpg",
+		//	"./resources/skybox/top.jpg",
+		//	"./resources/skybox/bottom.jpg",
+		//	"./resources/skybox/front.jpg",
+		//	"./resources/skybox/back.jpg"
+		//};
+		std::vector<std::string> facesCubemap =
+		{
+			"./resources/StarWarsSkyBox/right.png",
+			"./resources/StarWarsSkyBox/left.png",
+			"./resources/StarWarsSkyBox/top.png",
+			"./resources/StarWarsSkyBox/bottom.png",
+			"./resources/StarWarsSkyBox/front.png",
+			"./resources/StarWarsSkyBox/back.png"
+		};
+
+
+		mSkyBoxTexture = new Texture(facesCubemap);
+	}
+
+
 	return true;
 }
 
-
-MainLoop::TexChar MainLoop::LoadUTFChar(char16_t c)
-{
-	if (FT_Load_Glyph(mFontFace, FT_Get_Char_Index(mFontFace, c), FT_LOAD_RENDER)) {
-		std::cout << "ERROR::FREETYTPE: Failed to load Glyph" << std::endl;
-		exit(-1);
-	}
-	GLuint tex;
-	glGenTextures(1, &tex);
-	glActiveTexture(GL_TEXTURE);
-	glBindTexture(GL_TEXTURE_2D, tex);
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, mFontFace->glyph->bitmap.width, mFontFace->glyph->bitmap.rows,
-		0, GL_RED, GL_UNSIGNED_BYTE, mFontFace->glyph->bitmap.buffer);
-	//mFontWidth = mFontFace->glyph->bitmap.width;
-	//mFontHeight = mFontFace->glyph->bitmap.rows;
-
-	TexChar	 tc = {
-		tex,
-		glm::ivec2(mFontFace->glyph->bitmap.width, mFontFace->glyph->bitmap.rows),
-		glm::ivec2(mFontFace->glyph->bitmap_left, mFontFace->glyph->bitmap_top),
-		mFontFace->glyph->advance.x
-	};
-
-	glGenerateMipmap(GL_TEXTURE_2D);
-	glBindTexture(tex, 0);		// unbind
-
-	return tc;
-}
-
-void MainLoop::Draw3DUTF(std::u16string text, glm::vec3 pos, glm::vec3 color, float scale, glm::mat4 rot)
-{
-	m3DTextShader->UseProgram();
-	glBindVertexArray(m3DTextVertexArray);
-
-	glm::vec3 FontCenter = glm::vec3(0.0f);
-	// 文字のtexcharの大きさを取得
-	{
-		int TexWidth = 0;
-		int width = (mJapanTexChars.begin()->second.Advance >> 6) * scale;
-		FontCenter.x = (width * text.length()) / 2.0f;
-		FontCenter.y = width / 2.0f;
-	}
-
-	glm::mat4 SpriteTrans = glm::translate(glm::mat4(1.0f), pos - FontCenter);
-	glm::mat4 SpriteRotate = glm::rotate(glm::mat4(1.0f), 0.0f, glm::vec3(0, 0.0f, 1.0f));
-	m3DTextShader->SetMatrixUniform("uTranslate", SpriteTrans);
-	m3DTextShader->SetMatrixUniform("uRotate", rot);
-	m3DTextShader->SetVectorUniform("textColor", color);
-
-
-	glActiveTexture(GL_TEXTURE0);
-
-	float x2 = 0;
-	float y2 = 0;
-	//float scale = 1.0f;
-	const char16_t* str = text.c_str();
-	for (int i = 0; str[i] != '\0'; i++) {
-		auto itr = mJapanTexChars.find(str[i]);
-		TexChar ch;
-		if (itr == mJapanTexChars.end()) {		// まだ読み込まれていない文字なら
-			ch = LoadUTFChar(str[i]);
-			mJapanTexChars.insert(std::make_pair(str[i], ch));
-		}
-		else {
-			ch = itr->second;
-		}
-
-		float xpos = x2 + ch.Bearing.x * scale;
-		float ypos = y2 - (ch.Size.y - ch.Bearing.y) * scale;
-		float w = ch.Size.x * scale;
-		float h = ch.Size.y * scale;
-
-
-		float textVertices[6][4] = {
-			{ xpos,     ypos + h,   0.0f, 0.0f },
-			{ xpos,     ypos,       0.0f, 1.0f },
-			{ xpos + w, ypos,       1.0f, 1.0f },
-
-			{ xpos,     ypos + h,   0.0f, 0.0f },
-			{ xpos + w, ypos,       1.0f, 1.0f },
-			{ xpos + w, ypos + h,   1.0f, 0.0f }
-		};
-
-		glBindTexture(GL_TEXTURE_2D, ch.texID);
-		// update content of VBO memory
-		glBindBuffer(GL_ARRAY_BUFFER, m3DTextVertexBuffer);
-		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(textVertices), textVertices);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-		glDrawArrays(GL_TRIANGLES, 0, 6);
-		// now advance cursors for next glyph (note that advance is number of 1/64 pixels)
-		x2 += (ch.Advance >> 6) * scale;
-	}
-
-	glBindTexture(GL_TEXTURE_2D, 0);
-}
-
-void MainLoop::Draw3DUTFText(std::u16string text, glm::vec3 pos, glm::vec3 color, float textWidth, float scale, glm::mat4 rot)
-{
-	m3DTextShader->UseProgram();
-	glBindVertexArray(m3DTextVertexArray);
-
-	glm::vec3 FontCenter = glm::vec3(0.0f);
-	float FontWidth = (mJapanTexChars.begin()->second.Advance >> 6) * scale;
-	// 文字のtexcharの大きさを取得
-	{
-		FontCenter.x = textWidth / 2.0f;
-		FontCenter.y = FontWidth / 2.0f;
-	}
-	FontWidth *= 1.2f;
-	int maxRowChars = textWidth / FontWidth;	// 1行に入る最大文字数
-
-	// 行数取得
-	int maxRowCount = 1;
-	int rowCharCount = 0;
-	{
-		const char16_t* str = text.c_str();
-		for (int i = 0; i < str[i] != '\0'; i++) {
-			if (str[i] == '\n') {
-				maxRowCount++;
-				continue;
-			}
-			else if (rowCharCount == maxRowChars) {
-				maxRowCount++;
-			}
-		}
-	}
-
-	FontCenter.x = maxRowChars * FontWidth / 2.0f / 1.2;
-	FontCenter.y = maxRowCount * FontWidth / 2.0f / 1.2;
-	glm::mat4 SpriteTrans = glm::translate(glm::mat4(1.0f), pos - FontCenter);
-	m3DTextShader->SetMatrixUniform("uTranslate", SpriteTrans);
-	m3DTextShader->SetMatrixUniform("uRotate", rot);
-	m3DTextShader->SetVectorUniform("textColor", color);
-
-
-
-	glActiveTexture(GL_TEXTURE0);
-
-	float x2 = 0;
-	float y2 = 0;
-	//float scale = 1.0f;
-	const char16_t* str = text.c_str();
-	rowCharCount = 0;
-	for (int i = 0; str[i] != '\0'; i++) {
-		if (str[i] == '\n') {
-			x2 = 0.0f;
-			y2 -= FontWidth;
-			rowCharCount = 0;
-			maxRowCount++;
-			continue;
-		}
-		else if (rowCharCount == maxRowChars) {
-			x2 = 0.0f;
-			y2 -= FontWidth;
-			rowCharCount = 0;
-			maxRowCount++;
-		}
-		auto itr = mJapanTexChars.find(str[i]);
-		TexChar ch;
-		if (itr == mJapanTexChars.end()) {		// まだ読み込まれていない文字なら
-			ch = LoadUTFChar(str[i]);
-			mJapanTexChars.insert(std::make_pair(str[i], ch));
-		}
-		else {
-			ch = itr->second;
-		}
-
-		float xpos = x2 + ch.Bearing.x * scale;
-		float ypos = y2 - (ch.Size.y - ch.Bearing.y) * scale;
-		float w = ch.Size.x * scale;
-		float h = ch.Size.y * scale;
-
-
-		float textVertices[6][4] = {
-			{ xpos,     ypos + h,   0.0f, 0.0f },
-			{ xpos,     ypos,       0.0f, 1.0f },
-			{ xpos + w, ypos,       1.0f, 1.0f },
-
-			{ xpos,     ypos + h,   0.0f, 0.0f },
-			{ xpos + w, ypos,       1.0f, 1.0f },
-			{ xpos + w, ypos + h,   1.0f, 0.0f }
-		};
-
-		glBindTexture(GL_TEXTURE_2D, ch.texID);
-		// update content of VBO memory
-		glBindBuffer(GL_ARRAY_BUFFER, m3DTextVertexBuffer);
-		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(textVertices), textVertices);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-		glDrawArrays(GL_TRIANGLES, 0, 6);
-		// now advance cursors for next glyph (note that advance is number of 1/64 pixels)
-		x2 += (ch.Advance >> 6) * scale;
-		rowCharCount++;
-	}
-
-
-	glBindTexture(GL_TEXTURE_2D, 0);
-}
 
 
 bool MainLoop::LoadData()
@@ -420,13 +304,6 @@ bool MainLoop::LoadData()
 		return false;
 	}
 
-	// 日本語文字列textures作成
-	{
-		const char16_t str[] = u"楠本崚介";
-		for (int i = 0; str[i] != '\0'; i++) {
-			mJapanTexChars.insert(std::make_pair(str[i], LoadUTFChar(str[i])));
-		}
-	}
 
 	// Mesh読み込み
 	{
@@ -605,7 +482,6 @@ void MainLoop::Draw()
 		//mMeshes["SimpleObj"]->SetMeshRotate(rot);
 	}
 	{
-
 		glm::mat4 rot = glm::rotate(glm::mat4(1.0f), (float)M_PI, glm::vec3(1.0f, 0.0f, 0.0f));
 		mMeshes["StarWarsTitle"]->SetMeshRotate(rot);
 	}
@@ -614,6 +490,19 @@ void MainLoop::Draw()
 	for (auto itr = mMeshes.begin(); itr != mMeshes.end(); itr++) {
 		itr->second->Draw();
 	}
+
+	glDepthFunc(GL_LEQUAL);
+	{
+		mSkyBoxShader->UseProgram();
+		glm::mat4 skyView = glm::mat4(glm::mat3(glm::lookAt(mCameraPos, mCameraPos + mCameraOrientation, mCameraUP)));
+		mSkyBoxShader->SetMatrixUniform("uView", skyView);
+		glBindVertexArray(mSkyBoxVertexArray);
+		mSkyBoxTexture->BindCubeMapTexture();
+		glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+		mSkyBoxTexture->UnBindTexture();
+		glBindVertexArray(0);
+	}
+	glDepthFunc(GL_LESS);
 	
 
 	// --- draw sprites ---
@@ -633,13 +522,11 @@ void MainLoop::Draw()
 		//Draw3DUTF(u"「ジェダイの文字列」だよ", glm::vec3(0.0f, mTextPos - 3.0f, -3.0f), glm::vec3(1.0f, 1.0f, 1.0f), 0.03f, textRotate);
 	}
 	{
-		m3DTextShader->UseProgram();
-		m3DTextShader->SetMatrixUniform("uView", CameraView);
+		//m3DTextShader->UseProgram();
+		//m3DTextShader->SetMatrixUniform("uView", CameraView);
 		float textRad = atan(mInfH / mInfL);
 		glm::mat4 rotate = glm::rotate(glm::mat4(1.0f), textRad, glm::vec3(1.0f, 0.0f, 0.0f));
-		Draw3DUTFText(TitleTelop.c_str(), mTextPos, glm::vec3(1.0f, 1.0f, 1.0f), 47.0f, 0.05f, rotate);
-		glm::mat4 testRotate = glm::rotate(glm::mat4(1.0f), (float)M_PI / 2.0f, glm::vec3(1.0f, 0.0f, 0.0f));
-		//Draw3DUTFText(TitleTelop.c_str(), glm::vec3(0.0f, 50.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f), 47.0f, 0.05f, testRotate);
+		mText->Draw3DUTFText(TitleTelop.c_str(), mTextPos, glm::vec3(1.0f, 1.0f, 1.0f), 47.0f, 0.05f, rotate);
 	}
 
 
@@ -663,7 +550,7 @@ void MainLoop::RunLoop()
 
 void MainLoop::Shutdown()
 {
-	FT_Done_Face(mFontFace);
+	delete mText;
 
 	delete m3DTextShader;
 	SDL_GL_DeleteContext(mContext);

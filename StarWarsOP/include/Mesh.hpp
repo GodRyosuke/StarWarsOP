@@ -35,7 +35,7 @@ private:
 	struct ObjSubSet {
 		std::string MaterialName;
 		int FaceStart;				// Index Buffer‚ÌŠJnIndex
-		unsigned int FaceCount;				// Index Buffer‚ÌIndex‚Ì”
+		unsigned int FaceCount;		// Index Buffer‚ÌIndex‚Ì”
 	};
 
 	struct Material {
@@ -86,3 +86,4 @@ private:
 	float mSpecPower;
 
 };
+
