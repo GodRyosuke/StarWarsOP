@@ -171,5 +171,11 @@ void SceneManager::input()
 void SceneManager::shutdown()
 {
 	mScene->shutdown();
-	delete mScene;
+
+	// CommonData‚ÌUnload
+	delete mCommonData->mText;
+
+	SDL_GL_DeleteContext(mCommonData->mContext);
+	SDL_DestroyWindow(mCommonData->mWindow);
+	SDL_Quit();
 }

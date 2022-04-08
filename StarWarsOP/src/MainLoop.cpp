@@ -62,7 +62,8 @@ MainLoop::MainLoop(CommonData* const commonData)
 	mTextParam(0.25f),
 	mInfH(20.0f),
 	mInfL(100.0f),
-	mMoveSpeed(0.1f)
+	mMoveSpeed(0.1f), 
+	isSky(false)
 {
 	mTextDir = glm::vec3(0.0f, mInfL, mInfH);
 	mTextPos = glm::vec3(0.0f, 0.0f, -mInfH);
@@ -169,16 +170,20 @@ bool MainLoop::LoadShaders()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 	// Sky BoxÇÃTextureÇì«Ç›çûÇﬁ
+	// Load Sky Skybox
 	{
-		//std::vector<std::string> facesCubemap =
-		//{
-		//	"./resources/skybox/right.jpg",
-		//	"./resources/skybox/left.jpg",
-		//	"./resources/skybox/top.jpg",
-		//	"./resources/skybox/bottom.jpg",
-		//	"./resources/skybox/front.jpg",
-		//	"./resources/skybox/back.jpg"
-		//};
+		std::vector<std::string> facesCubemap =
+		{
+			"./resources/skybox/right.jpg",
+			"./resources/skybox/left.jpg",
+			"./resources/skybox/top.jpg",
+			"./resources/skybox/bottom.jpg",
+			"./resources/skybox/front.jpg",
+			"./resources/skybox/back.jpg"
+		};
+		mSkyBoxTexture = new Texture(facesCubemap);
+	}
+	{
 		std::vector<std::string> facesCubemap =
 		{
 			"./resources/StarWarsSkyBox/right.png",
@@ -190,7 +195,7 @@ bool MainLoop::LoadShaders()
 		};
 
 
-		mSkyBoxTexture = new Texture(facesCubemap);
+		mSpaceBoxTexture = new Texture(facesCubemap);
 	}
 
 
@@ -261,6 +266,14 @@ void MainLoop::input()
 	if (keyState[SDL_SCANCODE_D]) {
 		mCameraPos += mMoveSpeed * glm::normalize(glm::cross(mCameraOrientation, mCameraUP));
 	}
+
+	// K, PÉLÅ[Ç≈sky boxïœçX
+	if (keyState[SDL_SCANCODE_K]) {
+		isSky = true;
+	}
+	if (keyState[SDL_SCANCODE_P]) {
+		isSky = false;
+	}
 }
 
 
@@ -326,13 +339,18 @@ void MainLoop::draw()
 
 	glDepthFunc(GL_LEQUAL);
 	{
+		Texture* skyBoxTexture = mSpaceBoxTexture;
+		if (isSky) {
+			skyBoxTexture = mSkyBoxTexture;
+		}
+
 		mSkyBoxShader->UseProgram();
 		glm::mat4 skyView = glm::mat4(glm::mat3(glm::lookAt(mCameraPos, mCameraPos + mCameraOrientation, mCameraUP)));
 		mSkyBoxShader->SetMatrixUniform("uView", skyView);
 		glBindVertexArray(mSkyBoxVertexArray);
-		mSkyBoxTexture->BindCubeMapTexture();
+		skyBoxTexture->BindCubeMapTexture();
 		glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
-		mSkyBoxTexture->UnBindTexture();
+		skyBoxTexture->UnBindTexture();
 		glBindVertexArray(0);
 	}
 	glDepthFunc(GL_LESS);
@@ -376,8 +394,19 @@ void MainLoop::draw()
 //	ERRCHECK(mBackMusic->stop(FMOD_STUDIO_STOP_IMMEDIATE));
 //}
 
+
+void MainLoop::UnLoadData()
+{
+	delete mSkyBoxTexture;
+	delete mSpaceBoxTexture;
+	delete mSkyBoxShader;
+	delete mMeshShader;
+}
+
 void MainLoop::shutdown()
 {
+	UnLoadData();
+
 	//delete mText;
 
 	//delete m3DTextShader;

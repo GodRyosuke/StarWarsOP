@@ -25,7 +25,7 @@ public:
 		}
 
 		mSceneManager->shutdown();
-		int x = 0;
+		delete mSceneManager;
 	}
 
 private:

@@ -44,6 +44,7 @@ private:
 	//void Draw();
 
 	bool LoadData();
+	void UnLoadData();
 	bool LoadShaders();
 
 	float mMoveSpeed;
@@ -59,6 +60,7 @@ private:
 	unsigned int mSkyBoxVertexBuffer;
 	unsigned int mSkyBoxIndexBuffer;
 	Texture* mSkyBoxTexture;
+	Texture* mSpaceBoxTexture;
 
 	Shader* mMeshShader;
 
@@ -70,6 +72,8 @@ private:
 	float mTitlePos;
 	glm::vec3 mTextDir;
 	glm::vec3 mTextPos;
+
+	bool isSky;
 
 	float mTextParam;
 	float mInfH;

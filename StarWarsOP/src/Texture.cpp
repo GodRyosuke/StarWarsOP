@@ -3,7 +3,11 @@
 
 Texture::Texture()
 {
+}
 
+Texture::~Texture()
+{
+	glDeleteTextures(1, &texture_data);
 }
 
 Texture::Texture(std::string filePath)

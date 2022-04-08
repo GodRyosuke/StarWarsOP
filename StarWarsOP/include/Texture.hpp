@@ -9,6 +9,7 @@
 class Texture {
 public:
 	Texture();
+	~Texture();
 	Texture(std::string filePath);
 	Texture(std::vector<std::string> filePaths);
 

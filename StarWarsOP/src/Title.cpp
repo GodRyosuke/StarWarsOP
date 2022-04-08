@@ -21,7 +21,6 @@ Title::Title(CommonData* const commonData)
 
 Title::~Title()
 {
-	UnloadData();
 }
 
 bool Title::Initialize()
@@ -46,15 +45,11 @@ bool Title::LoadData()
 
 void Title::shutdown()
 {
-	//IMG_Quit();
-	//SDL_DestroyRenderer(mCommonData->mRenderer);
-	//SDL_DestroyWindow(mCommonData->mWindow);
-	//SDL_Quit();
+	UnloadData();
 }
 
 void Title::UnloadData()
 {
-	//SDL_DestroyTexture(mTitleTexture);
 }
 
 Scene* Title::update()
@@ -93,8 +88,7 @@ Scene* Title::update()
 	if ((thisTime - mPassedTime) > 5000) {
 		if (mOPTextAlpha > 0.0f) {
 			mOPTextAlpha -= 0.05f; 
-			std::cout << mOPTextAlpha << std::endl;
-		}
+ 		}
 	}
 
 	ERRCHECK(mCommonData->mAudioSystem->update());

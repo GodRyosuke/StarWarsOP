@@ -75,6 +75,8 @@ Text::Text(std::string ttfPath, Shader* textShader, Shader* text3DShader)
 Text::~Text()
 {
 	FT_Done_Face(mFontFace);
+	delete m3DTextShader;
+	delete mTextShader;
 }
 
 
