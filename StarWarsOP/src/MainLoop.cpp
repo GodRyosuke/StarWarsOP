@@ -56,103 +56,38 @@ unsigned int skyboxIndices[] =
 	6, 2, 3
 };
 
-MainLoop::MainLoop()
-	:mWindowWidth(1024),
-	mWindowHeight(768),
+MainLoop::MainLoop(CommonData* const commonData)
+	:Scene(commonData), 
 	mIsRunning(true),
-	mMoveSpeed(0.1),
-	mMoveSensitivity(100.0f),
 	mTextParam(0.25f),
 	mInfH(20.0f),
-	mInfL(100.0f)
+	mInfL(100.0f),
+	mMoveSpeed(0.1f)
 {
 	mTextDir = glm::vec3(0.0f, mInfL, mInfH);
 	mTextPos = glm::vec3(0.0f, 0.0f, -mInfH);
 	mTextDir = glm::normalize(mTextDir);
 	mTextDir /= 7.0f;
+
+	if (!Initialize()) {
+		printf("error: Failed to initialize Title Scene\n");
+		exit(-1);
+	}
+}
+
+MainLoop::~MainLoop()
+{
+
 }
 
 
 bool MainLoop::Initialize()
 {
-	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0)
-	{
-		SDL_Log("Unable to initialize SDL: %s", SDL_GetError());
-		return false;
-	}
-
-	// Set OpenGL attributes
-	// Use the core OpenGL profile
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-	// Specify version 3.3
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-	// Request a color buffer with 8-bits per RGBA channel
-	SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
-	SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
-	SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
-	SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
-	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-	// Enable double buffering
-	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-	// Force OpenGL to use hardware acceleration
-	SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
-
-
-	mWindow = SDL_CreateWindow("Wander OpenGL Tutorial", 100, 100,
-		mWindowWidth, mWindowHeight, SDL_WINDOW_OPENGL);
-	if (!mWindow)
-	{
-		SDL_Log("Failed to create window: %s", SDL_GetError());
-		return false;
-	}
-
-	// Create an OpenGL context
-	mContext = SDL_GL_CreateContext(mWindow);
-
-	// Initialize GLEW
-	glewExperimental = GL_TRUE;
-	if (glewInit() != GLEW_OK)
-	{
-		SDL_Log("Failed to initialize GLEW.");
-		return false;
-	}
-
-	auto error_code = glGetError();
-
-	setlocale(LC_CTYPE, "");
-
-
-	// Audio System
-	void* extraDriverData = NULL;
-	Common_Init(&extraDriverData);
-
-	mAudioSystem = NULL;
-	ERRCHECK(FMOD::Studio::System::create(&mAudioSystem));
-
-	// The example Studio project is authored for 5.1 sound, so set up the system output mode to match
-	FMOD::System* coreSystem = NULL;
-	ERRCHECK(mAudioSystem->getCoreSystem(&coreSystem));
-	ERRCHECK(coreSystem->setSoftwareFormat(0, FMOD_SPEAKERMODE_5POINT1, 0));
-
-	ERRCHECK(mAudioSystem->initialize(1024, FMOD_STUDIO_INIT_NORMAL, FMOD_INIT_NORMAL, extraDriverData));
-
-
-	if (!LoadShaders())
-	{
-		SDL_Log("Failed to load shaders.");
-		return false;
-	}
-
-
-	//CreateSpriteVerts();
-
 	if (!LoadData())
 	{
 		SDL_Log("Failed to load data.");
 		return false;
 	}
-
 
 
 	mTicksCount = SDL_GetTicks();
@@ -162,52 +97,20 @@ bool MainLoop::Initialize()
 
 bool MainLoop::LoadShaders()
 {
-	// Compile Shader Program
-	// Load TextShader
-	{
-		std::string vert_file = "./Shaders/Text.vert";
-		std::string frag_file = "./Shaders/Text.frag";
-		mTextShader = new Shader();
-		if (!mTextShader->CreateShaderProgram(vert_file, frag_file)) {
-			return false;
-		}
-	}
-
-	mTextShader->UseProgram();
-	{
-		glm::mat4 spriteViewProj = glm::mat4(1.0f);
-		spriteViewProj[0][0] = 2.0f / (float)mWindowWidth;
-		spriteViewProj[1][1] = 2.0f / (float)mWindowHeight;
-		spriteViewProj[3][2] = 1.0f;
-		mTextShader->SetMatrixUniform("uViewProj", spriteViewProj);
-	}
-
-	// Load 3DTextShader
-	{
-		std::string vert_file = "./Shaders/3DText.vert";
-		std::string frag_file = "./Shaders/3DText.frag";
-		m3DTextShader = new Shader();
-		if (!m3DTextShader->CreateShaderProgram(vert_file, frag_file)) {
-			return false;
-		}
-	}
-
-	mText = new Text(".\\resources\\arialuni.ttf", mTextShader, m3DTextShader);
-
-	// 初期値を代入
+	// Camera SetUP
  	mCameraUP = glm::vec3(0.0f, 0.0f, 1.0f);
 	mCameraOrientation = glm::vec3(0, 0.5f, 0);
 	glm::mat4 View = glm::lookAt(
 		mCameraPos,
 		mCameraPos + mCameraOrientation,
 		mCameraUP);
-	glm::mat4 Projection = glm::perspective(glm::radians(45.0f), (float)mWindowWidth / mWindowHeight, 0.1f, 100.0f);
+	glm::mat4 Projection = glm::perspective(glm::radians(45.0f), (float)mCommonData->mWindowWidth / mCommonData->mWindowHeight, 0.1f, 100.0f);
 
-	m3DTextShader->UseProgram();
-	m3DTextShader->SetMatrixUniform("uView", View);
-	m3DTextShader->SetMatrixUniform("uProj", Projection);
-	m3DTextShader->SetMatrixUniform("uTranslate", glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 35.0f, 0.0f)));
-	m3DTextShader->SetMatrixUniform("uRotate", glm::mat4(1.0f));
+	mCommonData->m3DTextShader->UseProgram();
+	mCommonData->m3DTextShader->SetMatrixUniform("uView", View);
+	mCommonData->m3DTextShader->SetMatrixUniform("uProj", Projection);
+	mCommonData->m3DTextShader->SetMatrixUniform("uTranslate", glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 35.0f, 0.0f)));
+	mCommonData->m3DTextShader->SetMatrixUniform("uRotate", glm::mat4(1.0f));
 
 
 
@@ -307,14 +210,6 @@ bool MainLoop::LoadData()
 
 	// Mesh読み込み
 	{
-		//Mesh* mesh = new Mesh("./resources/SimpleObj3/", "cubes.obj", mMeshShader, glm::vec3(0, -0.707, -0.707));
-		//mesh->SetMeshPos(glm::vec3(0.0f, 35.0f, 0.0f));
-		//mesh->SetMeshRotate(glm::mat4(1.0f));
-		//mesh->SetMeshScale(1.0f);
-		//mMeshes.insert(std::make_pair("SimpleObj", mesh));
-	}
-
-	{
 		mTitlePos = 5.0f;
 		Mesh* mesh = new Mesh("./resources/StarWars/", "StarWarsTitle.obj", mMeshShader, glm::vec3(0, -0.707, -0.707));
 		mesh->SetMeshPos(glm::vec3(0.0f, mTitlePos, 0.0f));
@@ -324,14 +219,8 @@ bool MainLoop::LoadData()
 	}
 
 	// Load Audio Bank
-	FMOD::Studio::Bank* masterBank = NULL;
-	ERRCHECK(mAudioSystem->loadBankFile(Common_MediaPath(".\\resources\\Master.bank"), FMOD_STUDIO_LOAD_BANK_NORMAL, &masterBank));
-
-	FMOD::Studio::Bank* stringsBank = NULL;
-	ERRCHECK(mAudioSystem->loadBankFile(Common_MediaPath(".\\resources\\Master.strings.bank"), FMOD_STUDIO_LOAD_BANK_NORMAL, &stringsBank));
-
 	FMOD::Studio::EventDescription* BackMusicDesc = NULL;
-	ERRCHECK(mAudioSystem->getEvent("event:/Main/StarWarsOP", &BackMusicDesc));
+	ERRCHECK(mCommonData->mAudioSystem->getEvent("event:/Main/StarWarsOP", &BackMusicDesc));
 	mBackMusic = NULL;
 	ERRCHECK(BackMusicDesc->createInstance(&mBackMusic));
 
@@ -341,13 +230,8 @@ bool MainLoop::LoadData()
 }
 
 
-void MainLoop::ProcessInput()
+void MainLoop::input()
 {
-	SDL_Point mouse_position = { mWindowWidth / 2, mWindowHeight / 2 };
-	SDL_GetMouseState(&mouse_position.x, &mouse_position.y);
-	mMousePos.x = mouse_position.x;
-	mMousePos.y = mouse_position.y;
-
 	SDL_Event event;
 	while (SDL_PollEvent(&event))
 	{
@@ -355,34 +239,6 @@ void MainLoop::ProcessInput()
 		{
 		case SDL_QUIT:
 			mIsRunning = false;
-			break;
-		case SDL_MOUSEBUTTONDOWN:	// マウスのボタンが押されたら
-		{
-			//if (mPhase == PHASE_IDLE) {
-			//	//mLastMousePos = mMousePos;
-			//	//mSwipingDropPos = mMousePos / GRID_SIZE;
-			//	mPhase = PHASE_MOVE;
-
-			//	SDL_WarpMouseInWindow(mWindow, mWindowWidth / 2, mWindowHeight / 2);
-			//	mMousePos.x = mWindowWidth / 2;
-			//	mMousePos.y = mWindowHeight / 2;
-			//	SDL_ShowCursor(SDL_DISABLE);
-			//	std::cout << "----------------------------------------------called\n";
-			//}
-		}
-		break;
-		case SDL_MOUSEBUTTONUP:		// マウスを離したら
-			//if (mPhase == PHASE_MOVE) {
-			//	mPhase = PHASE_IDLE;
-
-			//	/*if (EraseDrops()) {
-			//		phase = PHASE_ERASE;
-			//	}
-			//	else {
-			//		phase = PHASE_IDLE;
-			//	}*/
-			//	SDL_ShowCursor(SDL_ENABLE);
-			//}
 			break;
 		}
 	}
@@ -394,21 +250,21 @@ void MainLoop::ProcessInput()
 	}
 
 	if (keyState[SDL_SCANCODE_W]) {
-		mCameraPos += (float)mMoveSpeed * mCameraOrientation;
+		mCameraPos += mMoveSpeed * mCameraOrientation;
 	}
 	if (keyState[SDL_SCANCODE_S]) {
-		mCameraPos -= (float)mMoveSpeed * mCameraOrientation;
+		mCameraPos -= mMoveSpeed * mCameraOrientation;
 	}
 	if (keyState[SDL_SCANCODE_A]) {
-		mCameraPos -= (float)mMoveSpeed * glm::normalize(glm::cross(mCameraOrientation, mCameraUP));
+		mCameraPos -= mMoveSpeed * glm::normalize(glm::cross(mCameraOrientation, mCameraUP));
 	}
 	if (keyState[SDL_SCANCODE_D]) {
-		mCameraPos += (float)mMoveSpeed * glm::normalize(glm::cross(mCameraOrientation, mCameraUP));
+		mCameraPos += mMoveSpeed * glm::normalize(glm::cross(mCameraOrientation, mCameraUP));
 	}
 }
 
 
-void MainLoop::UpdateGame()
+Scene* MainLoop::update()
 {
 	while (!SDL_TICKS_PASSED(SDL_GetTicks(), mTicksCount + 16))
 		;
@@ -426,40 +282,17 @@ void MainLoop::UpdateGame()
 	mTextParam += 0.0001f;
 	mTextPos = mTextParam * mTextDir + mTextPos;
 
-	//mCubeRotation = deltaTime * mCubeRotateVel * 10;
+	if (!mIsRunning) {
+		return nullptr;
+	}
 
-	//last = clock();
-	//ComputeWorldTransform();	// Cubeのtransformを計算
 
-	//if (mPhase == PHASE_MOVE) {
-	//	//printf("%d %d\n", mMousePos.x, mMousePos.y);
+	ERRCHECK(mCommonData->mAudioSystem->update());
 
-	//	float rotX = mMoveSensitivity * (float)((float)mMousePos.y - ((float)mWindowHeight / 2.0f)) / (float)mWindowHeight;
-	//	float rotY = mMoveSensitivity * (float)((float)mMousePos.x - ((float)mWindowWidth / 2.0f)) / (float)mWindowWidth;
-	//	printf("rotX: %f rotY: %f\t", rotX, rotY);
-	//	// Calculates upcoming vertical change in the Orientation
-	//	glm::vec3 newOrientation = glm::rotate(mCameraOrientation, glm::radians(-rotX), glm::normalize(glm::cross(mCameraOrientation, mCameraUP)));
-
-	//	// Decides whether or not the next vertical Orientation is legal or not
-	//	int rad = abs(glm::angle(newOrientation, mCameraUP) - glm::radians(90.0f));
-	//	std::cout << rad * 180 / M_PI << std::endl;
-	//	if (abs(glm::angle(newOrientation, mCameraUP) - glm::radians(90.0f)) <= glm::radians(85.0f))
-	//	{
-	//		mCameraOrientation = newOrientation;
-	//	}
-
-	//	// Rotates the Orientation left and right
-	//	mCameraOrientation = glm::rotate(mCameraOrientation, glm::radians(-rotY), mCameraUP);
-
-	//	if ((mMousePos.x != mWindowWidth / 2) || (mMousePos.y != mWindowHeight / 2)) {
-	//		SDL_WarpMouseInWindow(mWindow, mWindowWidth / 2, mWindowHeight / 2);
-	//	}
-	//}
-
-	ERRCHECK(mAudioSystem->update());
+	return this;
 }
 
-void MainLoop::Draw()
+void MainLoop::draw()
 {
 	glClearColor(0, 0, 0.1, 1.0f);
 	// Clear the color buffer
@@ -511,49 +344,44 @@ void MainLoop::Draw()
 	glEnable(GL_BLEND);
 	glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
 	glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
-	m3DTextShader->UseProgram();
-	m3DTextShader->SetMatrixUniform("uView", CameraView);
-
-	{
-		//m3DTextShader->UseProgram();
-		//m3DTextShader->SetMatrixUniform("uView", CameraView);
-		//glm::mat4 textRotate = glm::rotate(glm::mat4(1.0f), (float)M_PI / 6.0f, glm::vec3(1.0, 0.0f, 0.0f));
-		//Draw3DUTF(u"「ジェダイの文字列」", glm::vec3(0.0f, mTextPos, -3.0f), glm::vec3(1.0f, 1.0f, 1.0f), 0.03f, textRotate);
-		//Draw3DUTF(u"「ジェダイの文字列」だよ", glm::vec3(0.0f, mTextPos - 3.0f, -3.0f), glm::vec3(1.0f, 1.0f, 1.0f), 0.03f, textRotate);
-	}
+	mCommonData->m3DTextShader->UseProgram();
+	mCommonData->m3DTextShader->SetMatrixUniform("uView", CameraView);
 	{
 		//m3DTextShader->UseProgram();
 		//m3DTextShader->SetMatrixUniform("uView", CameraView);
 		float textRad = atan(mInfH / mInfL);
 		glm::mat4 rotate = glm::rotate(glm::mat4(1.0f), textRad, glm::vec3(1.0f, 0.0f, 0.0f));
-		mText->Draw3DUTFText(TitleTelop.c_str(), mTextPos, glm::vec3(1.0f, 1.0f, 1.0f), 47.0f, 0.05f, rotate);
+		mCommonData->mText->Draw3DUTFText(TitleTelop.c_str(), mTextPos, glm::vec3(1.0f, 1.0f, 1.0f), 16, 0.05f, rotate);
 	}
+
+	//mCommonData->mText->Draw3DUTFText(u"これは文字列です\n文字列", glm::vec3(0.0f, 10.0f, 0.0f), glm::vec3(0.2f, 1.0f, 0.2f),
+	//	20.0f, 0.05f, glm::rotate(glm::mat4(1.0f), (float)M_PI / 2.0f, glm::vec3(1.0f, 0.0f, 0.0f)));
 
 
 
 	glBindVertexArray(0);
 
-	SDL_GL_SwapWindow(mWindow);
+	SDL_GL_SwapWindow(mCommonData->mWindow);
 }
 
 
-void MainLoop::RunLoop()
-{
-	while (mIsRunning)
-	{
-		ProcessInput();
-		UpdateGame();
-		Draw();
-	}
-	ERRCHECK(mBackMusic->stop(FMOD_STUDIO_STOP_IMMEDIATE));
-}
+//void MainLoop::RunLoop()
+//{
+//	while (mIsRunning)
+//	{
+//		ProcessInput();
+//		UpdateGame();
+//		Draw();
+//	}
+//	ERRCHECK(mBackMusic->stop(FMOD_STUDIO_STOP_IMMEDIATE));
+//}
 
-void MainLoop::Shutdown()
+void MainLoop::shutdown()
 {
-	delete mText;
+	//delete mText;
 
-	delete m3DTextShader;
-	SDL_GL_DeleteContext(mContext);
-	SDL_DestroyWindow(mWindow);
-	SDL_Quit();
+	//delete m3DTextShader;
+	//SDL_GL_DeleteContext(mContext);
+	//SDL_DestroyWindow(mWindow);
+	//SDL_Quit();
 }

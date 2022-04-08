@@ -8,6 +8,7 @@
 #include "fmod_studio.hpp"
 #include "FMOD/common.hpp"
 #include "Text.hpp"
+#include "Shader.hpp"
 
 namespace nl = nlohmann;
 
@@ -15,29 +16,20 @@ class CommonData {
 public:
     CommonData() {}
 
-
-
     SDL_Window* mWindow;
     SDL_GLContext mContext;
 
     int mWindowWidth;
     int mWindowHeight;
 
+    Shader* mTextShader;
+    Shader* m3DTextShader;
+
     Text* mText;
-    nl::json mTextData;
 
     FMOD::Studio::System* mAudioSystem;
 
-    enum {
-        JAPANESE,
-        ENGLISH,
-        NUM_LANG_TYPE
-    };
-
-    int mLangType;
-
 
 private:
-    int player_num;
 
 };

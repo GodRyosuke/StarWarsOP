@@ -1,4 +1,5 @@
 #pragma once
+
 #include "SDL.h"
 #include "glew.h"
 #include <iostream>
@@ -18,44 +19,41 @@
 #include "FMOD/common.hpp"
 #include "Text.hpp"
 
+#include "Scene.hpp"
+#include "CommonData.hpp"
+
 #include FT_FREETYPE_H
 
 
-class MainLoop {
+class MainLoop : public Scene {
 public:
-	MainLoop();
+	MainLoop(CommonData* const commonData);
+	virtual ~MainLoop();
+	virtual Scene* update() override;
+	virtual void draw() override;
+	virtual void input() override;
+	virtual void shutdown() override;
+
+
 	bool Initialize();
-	void RunLoop();
-	void Shutdown();
+	//void RunLoop();
 
 private:
-	void ProcessInput();
-	void UpdateGame();
-	void Draw();
+	//void ProcessInput();
+	//void UpdateGame();
+	//void Draw();
 
 	bool LoadData();
 	bool LoadShaders();
 
+	float mMoveSpeed;
 
 	bool mIsRunning;
 
-	SDL_Window* mWindow;
-	// OpenGL context
-	SDL_GLContext mContext;
-	int mWindowWidth;
-	int mWindowHeight;
-
-	Text* mText;
 	Uint32 mTicksCount;
 
 
 	// ---- Shaders ---
-	Shader* mTextShader;
-
-	Shader* m3DTextShader;
-	unsigned int m3DTextVertexArray;
-	unsigned int m3DTextVertexBuffer;
-
 	Shader* mSkyBoxShader;
 	unsigned int mSkyBoxVertexArray;
 	unsigned int mSkyBoxVertexBuffer;
@@ -68,10 +66,6 @@ private:
 	glm::vec3 mCameraPos;
 	glm::vec3 mCameraUP;
 	glm::vec3 mCameraOrientation;
-	float mMoveSpeed;
-	float mMoveSensitivity;
-
-	glm::ivec3 mMousePos;
 
 	float mTitlePos;
 	glm::vec3 mTextDir;
@@ -84,7 +78,10 @@ private:
 	std::map<std::string, Mesh*> mMeshes;
 
 	// ---- Sound Libraries ----
-	FMOD::Studio::System* mAudioSystem;
 	FMOD::Studio::EventInstance* mBackMusic;
-
 };
+
+template<>
+Scene* Scene::makeScene<MainLoop>() {
+	return new MainLoop(mCommonData);
+}

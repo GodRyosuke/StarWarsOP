@@ -114,7 +114,7 @@ Text::TexChar Text::LoadUTFChar(char16_t c)
 	return tc;
 }
 
-void Text::DrawUTF(std::u16string text, glm::vec3 pos, glm::vec3 color, float scale, float rot)
+void Text::DrawUTF(std::u16string text, glm::vec3 pos, glm::vec3 color, float scale, float rot, float textAlpha)
 {
 	mTextShader->UseProgram();
 	glBindVertexArray(mTextVertexArray);
@@ -123,7 +123,7 @@ void Text::DrawUTF(std::u16string text, glm::vec3 pos, glm::vec3 color, float sc
 	// 文字のtexcharの大きさを取得
 	{
 		int TexWidth = 0;
-		int width = (mJapanTexChars.begin()->second.Advance >> 6) * scale;
+		int width = (mJapanTexChars[u'楠'].Advance >> 6) * scale;
 		FontCenter.x = (width * text.length()) / 2.0f;
 		FontCenter.y = width / 2.0f;
 	}
@@ -133,6 +133,7 @@ void Text::DrawUTF(std::u16string text, glm::vec3 pos, glm::vec3 color, float sc
 	mTextShader->SetMatrixUniform("uWorldTransform", SpriteTrans);
 	mTextShader->SetMatrixUniform("uRotate", SpriteRotate);
 	mTextShader->SetVectorUniform("textColor", color);
+	mTextShader->SetFloatUniform("uTextAlpha", textAlpha);
 
 
 	glActiveTexture(GL_TEXTURE0);
@@ -182,7 +183,115 @@ void Text::DrawUTF(std::u16string text, glm::vec3 pos, glm::vec3 color, float sc
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void Text::Draw3DUTF(std::u16string text, glm::vec3 pos, glm::vec3 color, float scale, glm::mat4 rot)
+void Text::DrawUTFText(std::u16string text, glm::vec3 pos, glm::vec3 color, int maxRowChars, float scale, float rot, float textAlpha)
+{
+	mTextShader->UseProgram();
+	glBindVertexArray(mTextVertexArray);
+
+	glm::vec3 FontCenter = glm::vec3(0.0f);
+	//float FontWidth = (mJapanTexChars.begin()->second.Advance >> 6) * scale;
+	float FontWidth = (mJapanTexChars[u'楠'].Advance >> 6) * scale;
+	float FontHeight = (mJapanTexChars[u'楠'].Size.y >> 6) * scale;
+	auto this_begin = mJapanTexChars.begin();
+	// 文字のtexcharの大きさを取得
+	//FontWidth *= 1.2f;
+	//int maxRowChars = textWidth / FontWidth;	// 1行に入る最大文字数
+
+	FontCenter.x = maxRowChars * FontWidth / 2.0f;
+
+	// 行数取得
+	int maxRowCount = 1;
+	int rowCharCount = 1;
+	{
+		const char16_t* str = text.c_str();
+		for (int i = 0; str[i] != '\0'; i++) {
+			if (str[i] == u'\n') {
+				maxRowCount++;
+				rowCharCount = 1;
+				continue;
+			}
+			else if (rowCharCount == maxRowChars) {
+				maxRowCount++;
+				rowCharCount = 0;
+			}
+
+			rowCharCount++;
+		}
+	}
+	FontCenter.y = -maxRowCount * FontHeight / 2.0f;
+
+	glm::mat4 SpriteTrans = glm::translate(glm::mat4(1.0f), pos - FontCenter);
+	glm::mat4 SpriteRotate = glm::rotate(glm::mat4(1.0f), 0.0f, glm::vec3(0, 0.0f, 1.0f));
+	mTextShader->SetMatrixUniform("uWorldTransform", SpriteTrans);
+	mTextShader->SetMatrixUniform("uRotate", SpriteRotate);
+	mTextShader->SetVectorUniform("textColor", color);
+	mTextShader->SetFloatUniform("uTextAlpha", textAlpha);
+
+
+	glActiveTexture(GL_TEXTURE0);
+
+	int x2 = 0;
+	int y2 = 0;
+	//float scale = 1.0f;
+	const char16_t* str = text.c_str();
+	for (int i = 0; str[i] != '\0'; i++) {
+		if (str[i] == '\n') {
+			x2 = 0.0f;
+			y2 -= FontWidth;
+			rowCharCount = 0;
+			maxRowCount++;
+			continue;
+		}
+		else if (rowCharCount == maxRowChars) {
+			x2 = 0.0f;
+			y2 -= FontWidth;
+			rowCharCount = 0;
+			maxRowCount++;
+		}
+
+
+		auto itr = mJapanTexChars.find(str[i]);
+		TexChar ch;
+		if (itr == mJapanTexChars.end()) {		// まだ読み込まれていない文字なら
+			ch = LoadUTFChar(str[i]);
+			mJapanTexChars.insert(std::make_pair(str[i], ch));
+		}
+		else {
+			ch = itr->second;
+		}
+
+		float xpos = x2 + ch.Bearing.x * scale;
+		float ypos = y2 - (ch.Size.y - ch.Bearing.y) * scale;
+		float w = ch.Size.x * scale;
+		float h = ch.Size.y * scale;
+
+
+		float textVertices[6][4] = {
+			{ xpos,     ypos + h,   0.0f, 0.0f },
+			{ xpos,     ypos,       0.0f, 1.0f },
+			{ xpos + w, ypos,       1.0f, 1.0f },
+
+			{ xpos,     ypos + h,   0.0f, 0.0f },
+			{ xpos + w, ypos,       1.0f, 1.0f },
+			{ xpos + w, ypos + h,   1.0f, 0.0f }
+		};
+
+		glBindTexture(GL_TEXTURE_2D, ch.texID);
+		// update content of VBO memory
+		glBindBuffer(GL_ARRAY_BUFFER, mTextVertexBuffer);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(textVertices), textVertices);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+		// now advance cursors for next glyph (note that advance is number of 1/64 pixels)
+		x2 += (ch.Advance >> 6) * scale;
+	}
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+
+void Text::Draw3DUTF(std::u16string text, glm::vec3 pos, glm::vec3 color, float scale, glm::mat4 rot, float textAlpha)
 {
 	m3DTextShader->UseProgram();
 	glBindVertexArray(m3DTextVertexArray);
@@ -191,7 +300,7 @@ void Text::Draw3DUTF(std::u16string text, glm::vec3 pos, glm::vec3 color, float 
 	// 文字のtexcharの大きさを取得
 	{
 		int TexWidth = 0;
-		int width = (mJapanTexChars.begin()->second.Advance >> 6) * scale;
+		int width = (mJapanTexChars[u'楠'].Advance >> 6) * scale;
 		FontCenter.x = (width * text.length()) / 2.0f;
 		FontCenter.y = width / 2.0f;
 	}
@@ -201,6 +310,7 @@ void Text::Draw3DUTF(std::u16string text, glm::vec3 pos, glm::vec3 color, float 
 	m3DTextShader->SetMatrixUniform("uTranslate", SpriteTrans);
 	m3DTextShader->SetMatrixUniform("uRotate", rot);
 	m3DTextShader->SetVectorUniform("textColor", color);
+	m3DTextShader->SetFloatUniform("uTextAlpha", textAlpha);
 
 
 	glActiveTexture(GL_TEXTURE0);
@@ -250,43 +360,52 @@ void Text::Draw3DUTF(std::u16string text, glm::vec3 pos, glm::vec3 color, float 
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void Text::Draw3DUTFText(std::u16string text, glm::vec3 pos, glm::vec3 color, float textWidth, float scale, glm::mat4 rot)
+void Text::Draw3DUTFText(std::u16string text, glm::vec3 pos, glm::vec3 color, int maxRowChars, float scale, glm::mat4 rot, float textAlpha)
 {
 	m3DTextShader->UseProgram();
 	glBindVertexArray(m3DTextVertexArray);
 
 	glm::vec3 FontCenter = glm::vec3(0.0f);
-	float FontWidth = (mJapanTexChars.begin()->second.Advance >> 6) * scale;
+	//float FontWidth = (mJapanTexChars.begin()->second.Advance >> 6) * scale;
+	float FontWidth = (mJapanTexChars[u'楠'].Advance >> 6) * scale;
+	float FontHeight = (mJapanTexChars[u'楠'].Size.y >> 6) * scale;
+
+	auto this_begin = mJapanTexChars.begin();
 	// 文字のtexcharの大きさを取得
-	{
-		FontCenter.x = textWidth / 2.0f;
-		FontCenter.y = FontWidth / 2.0f;
-	}
 	FontWidth *= 1.2f;
-	int maxRowChars = textWidth / FontWidth;	// 1行に入る最大文字数
+
+	//int maxRowChars = textWidth / FontWidth;	// 1行に入る最大文字数
+
 
 	// 行数取得
 	int maxRowCount = 1;
-	int rowCharCount = 0;
+	int rowCharCount = 1;
 	{
 		const char16_t* str = text.c_str();
-		for (int i = 0; i < str[i] != '\0'; i++) {
+		for (int i = 0; str[i] != '\0'; i++) {
 			if (str[i] == '\n') {
 				maxRowCount++;
+				rowCharCount = 1;
 				continue;
 			}
 			else if (rowCharCount == maxRowChars) {
 				maxRowCount++;
+				rowCharCount = 0;
 			}
+
+			rowCharCount++;
 		}
 	}
+	
 
-	FontCenter.x = maxRowChars * FontWidth / 2.0f / 1.2;
-	FontCenter.y = maxRowCount * FontWidth / 2.0f / 1.2;
+	FontCenter.x = maxRowChars * FontWidth / 2.0f / 1.2f;
+	FontCenter.y = -maxRowCount * FontHeight / 2.0f;
 	glm::mat4 SpriteTrans = glm::translate(glm::mat4(1.0f), pos - FontCenter);
 	m3DTextShader->SetMatrixUniform("uTranslate", SpriteTrans);
 	m3DTextShader->SetMatrixUniform("uRotate", rot);
 	m3DTextShader->SetVectorUniform("textColor", color);
+	m3DTextShader->SetFloatUniform("uTextAlpha", textAlpha);
+
 
 
 
@@ -311,6 +430,7 @@ void Text::Draw3DUTFText(std::u16string text, glm::vec3 pos, glm::vec3 color, fl
 			rowCharCount = 0;
 			maxRowCount++;
 		}
+
 		auto itr = mJapanTexChars.find(str[i]);
 		TexChar ch;
 		if (itr == mJapanTexChars.end()) {		// まだ読み込まれていない文字なら

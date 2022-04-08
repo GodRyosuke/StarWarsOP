@@ -82,6 +82,8 @@ bool SceneManager::Initialize()
 	ERRCHECK(coreSystem->setSoftwareFormat(0, FMOD_SPEAKERMODE_5POINT1, 0));
 
 	ERRCHECK(mCommonData->mAudioSystem->initialize(1024, FMOD_STUDIO_INIT_NORMAL, FMOD_INIT_NORMAL, extraDriverData));
+
+
 	if (!LoadData()) {
 		printf("error: failed to load data @ Scene Manager");
 		return false;
@@ -96,25 +98,39 @@ bool SceneManager::Initialize()
 
 bool SceneManager::LoadData()
 {
-	// Font読み込み
-	mCommonData->mFont = TTF_OpenFont(".\\resources\\VL-Gothic-Regular.ttf", 128);
-
-	// 日本語テキストデータ読み込み
+	// TextShader読み込み
 	{
-		std::string filePath = ".\\resources\\GameText.json";
-		std::ifstream ifs(filePath.c_str());
-		if (ifs.good()) {
-			ifs >> mCommonData->mTextData;
+		std::string vert_file = "./Shaders/Text.vert";
+		std::string frag_file = "./Shaders/Text.frag";
+		mCommonData->mTextShader = new Shader();
+		if (!mCommonData->mTextShader->CreateShaderProgram(vert_file, frag_file)) {
+			return false;
 		}
-		else {
-			printf("error: failed to load text lang data\n");
+	}
+
+	mCommonData->mTextShader->UseProgram();
+	{
+		glm::mat4 spriteViewProj = glm::mat4(1.0f);
+		spriteViewProj[0][0] = 2.0f / (float)mCommonData->mWindowWidth;
+		spriteViewProj[1][1] = 2.0f / (float)mCommonData->mWindowHeight;
+		spriteViewProj[3][2] = 1.0f;
+		mCommonData->mTextShader->SetMatrixUniform("uViewProj", spriteViewProj);
+	}
+
+	// 3DTextShader読み込み
+	{
+		std::string vert_file = "./Shaders/3DText.vert";
+		std::string frag_file = "./Shaders/3DText.frag";
+		mCommonData->m3DTextShader = new Shader();
+		if (!mCommonData->m3DTextShader->CreateShaderProgram(vert_file, frag_file)) {
 			return false;
 		}
 	}
 
 
-	// デフォルトは英語
-	mCommonData->mLangType = mCommonData->ENGLISH;
+	// Font読み込み
+	mCommonData->mText = new Text(".\\resources\\arialuni.ttf", mCommonData->mTextShader, mCommonData->m3DTextShader);
+
 
 
 	// Load Master Bank

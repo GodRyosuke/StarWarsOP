@@ -1,17 +1,9 @@
-#include <iostream>
-#include "MainLoop.hpp"
+#include "GameLoop.hpp"
 
 int main(int argc, char** argv)
 {
-	MainLoop mainLoop;
-
-	if (!mainLoop.Initialize()) {
-		printf("error: failed to initalize game\n");
-		return -1;
-	}
-
-	mainLoop.RunLoop();
-	mainLoop.Shutdown();
+	GameLoop gameLoop;
+	gameLoop.Run();
 
 	return 0;
 }

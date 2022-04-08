@@ -34,6 +34,7 @@
     <ClInclude Include="include\CommonData.hpp" />
     <ClInclude Include="include\FMOD\common.hpp" />
     <ClInclude Include="include\FMOD\common_platform.hpp" />
+    <ClInclude Include="include\GameLoop.hpp" />
     <ClInclude Include="include\MainLoop.hpp" />
     <ClInclude Include="include\Mesh.hpp" />
     <ClInclude Include="include\Scene.hpp" />
