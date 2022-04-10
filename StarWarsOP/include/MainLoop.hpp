@@ -1,4 +1,5 @@
 #pragma once
+
 #include "SDL.h"
 #include "glew.h"
 #include <iostream>
@@ -16,53 +17,50 @@
 #include "fmod.hpp"
 #include "fmod_studio.hpp"
 #include "FMOD/common.hpp"
+#include "Text.hpp"
+
+#include "Scene.hpp"
+#include "CommonData.hpp"
 
 #include FT_FREETYPE_H
 
 
-class MainLoop {
+class MainLoop : public Scene {
 public:
-	MainLoop();
+	MainLoop(CommonData* const commonData);
+	virtual ~MainLoop();
+	virtual Scene* update() override;
+	virtual void draw() override;
+	virtual void input() override;
+	virtual void shutdown() override;
+
+
 	bool Initialize();
-	void RunLoop();
-	void Shutdown();
+	//void RunLoop();
 
 private:
-	struct TexChar {
-		GLuint texID;
-		glm::ivec2 Size;
-		glm::ivec2 Bearing;
-		unsigned int Advance;
-	};
-
-	void ProcessInput();
-	void UpdateGame();
-	void Draw();
+	//void ProcessInput();
+	//void UpdateGame();
+	//void Draw();
 
 	bool LoadData();
+	void UnLoadData();
 	bool LoadShaders();
-	TexChar LoadUTFChar(char16_t c);
-	void Draw3DUTF(std::u16string text, glm::vec3 pos, glm::vec3 color, float scale = 1.0f, glm::mat4 rot = glm::mat4(1.0f));
-	void Draw3DUTFText(std::u16string text, glm::vec3 pos, glm::vec3 color, float textWidth, float scale = 1.0f, glm::mat4 rot = glm::mat4(1.0f));
 
+	float mMoveSpeed;
 
 	bool mIsRunning;
 
-	SDL_Window* mWindow;
-	// OpenGL context
-	SDL_GLContext mContext;
-	int mWindowWidth;
-	int mWindowHeight;
-
-	FT_Face mFontFace;
 	Uint32 mTicksCount;
-	std::map<char16_t, TexChar> mJapanTexChars;
 
 
 	// ---- Shaders ---
-	Shader* m3DTextShader;
-	unsigned int m3DTextVertexArray;
-	unsigned int m3DTextVertexBuffer;
+	Shader* mSkyBoxShader;
+	unsigned int mSkyBoxVertexArray;
+	unsigned int mSkyBoxVertexBuffer;
+	unsigned int mSkyBoxIndexBuffer;
+	Texture* mSkyBoxTexture;
+	Texture* mSpaceBoxTexture;
 
 	Shader* mMeshShader;
 
@@ -70,14 +68,12 @@ private:
 	glm::vec3 mCameraPos;
 	glm::vec3 mCameraUP;
 	glm::vec3 mCameraOrientation;
-	float mMoveSpeed;
-	float mMoveSensitivity;
-
-	glm::ivec3 mMousePos;
 
 	float mTitlePos;
 	glm::vec3 mTextDir;
 	glm::vec3 mTextPos;
+
+	bool isSky;
 
 	float mTextParam;
 	float mInfH;
@@ -86,7 +82,10 @@ private:
 	std::map<std::string, Mesh*> mMeshes;
 
 	// ---- Sound Libraries ----
-	FMOD::Studio::System* mAudioSystem;
 	FMOD::Studio::EventInstance* mBackMusic;
-
 };
+
+template<>
+Scene* Scene::makeScene<MainLoop>() {
+	return new MainLoop(mCommonData);
+}
