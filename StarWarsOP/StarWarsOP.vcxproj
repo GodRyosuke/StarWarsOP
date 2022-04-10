@@ -24,16 +24,25 @@
     <ClCompile Include="src\Main.cpp" />
     <ClCompile Include="src\MainLoop.cpp" />
     <ClCompile Include="src\Mesh.cpp" />
+    <ClCompile Include="src\SceneManager.cpp" />
     <ClCompile Include="src\Shader.cpp" />
+    <ClCompile Include="src\Text.cpp" />
     <ClCompile Include="src\Texture.cpp" />
+    <ClCompile Include="src\Title.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\CommonData.hpp" />
     <ClInclude Include="include\FMOD\common.hpp" />
     <ClInclude Include="include\FMOD\common_platform.hpp" />
+    <ClInclude Include="include\GameLoop.hpp" />
     <ClInclude Include="include\MainLoop.hpp" />
     <ClInclude Include="include\Mesh.hpp" />
+    <ClInclude Include="include\Scene.hpp" />
+    <ClInclude Include="include\SceneManager.hpp" />
     <ClInclude Include="include\Shader.hpp" />
+    <ClInclude Include="include\Text.hpp" />
     <ClInclude Include="include\Texture.hpp" />
+    <ClInclude Include="include\Title.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\Mesh.frag" />

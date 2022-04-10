@@ -27,11 +27,11 @@ XCOPY "$(SolutionDir)dependencies\freetype\lib\freetype.dll" "$(OutDir)" /e /y
 
 set OUTPUT_DIRECTORY="$(OutDir)Shaders"
 if not exist %OUTPUT_DIRECTORY% mkdir %OUTPUT_DIRECTORY%
-XCOPY "$(SolutionDir)StarWarsOP\Shaders" %OUTPUT_DIRECTORY% /e /y
+XCOPY "$(SolutionDir)WanderTetris\Shaders" %OUTPUT_DIRECTORY% /e /y
 
 set OUTPUT_DIRECTORY="$(OutDir)resources"
 if not exist %OUTPUT_DIRECTORY% mkdir %OUTPUT_DIRECTORY%
-XCOPY "$(SolutionDir)StarWarsOP\resources" %OUTPUT_DIRECTORY% /e /y
+XCOPY "$(SolutionDir)WanderTetris\resources" %OUTPUT_DIRECTORY% /e /y
 
 
 
